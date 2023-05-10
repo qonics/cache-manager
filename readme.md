@@ -9,7 +9,13 @@ If the data is not found in the cache, the Cache Manager retrieves it from the d
 
 **the available access option is only REST API, we will keep improving it and you can create a pull request**
 
+### Supported storage engine/Database
+1. Redis
+
 ## To do
 - Authentication
 - Delete cached item by using tags
 - Delete cached item by using a snipped of content data like id
+- Supporting of access it by using sockets
+- Terminal access (View summary, View version, purge cache, view cache, update,...)
+- Support multiple storage engine/database
