@@ -52,7 +52,7 @@ func SecurePath(c *gin.Context) *model.UserPayload {
 		c.JSON(401, gin.H{"message": "Authentication failed, invalid token", "status": 401})
 		panic("done, secure path failed #unmarshal" + err.Error())
 	}
-	fmt.Println("User access_id:", logger.AccessId)
+	// fmt.Println("User access_id:", logger.AccessId)
 	userAgent := c.Request.UserAgent()
 	// userIp := c.ClientIP()
 	if len(c.GetHeader("uag")) > 0 {
@@ -94,7 +94,7 @@ func CompressJsonIndexing(data string) string {
 	data = strings.ReplaceAll(data, ":", "")
 	data = strings.ReplaceAll(data, " ", "")
 	data = strings.ReplaceAll(data, "\"", "")
-	fmt.Println("simplified string: ", data)
+	// fmt.Println("simplified string: ", data)
 	return data
 }
 func CorsReply(c *gin.Context) {

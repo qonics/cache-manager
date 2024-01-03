@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Hello - CAMIS")
+	fmt.Println("Hello - Cache manager")
 	config.InitializeConfig()
 	config.ConnectDb()
 	defer config.SESSION.Close()

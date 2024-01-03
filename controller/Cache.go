@@ -6,7 +6,6 @@ import (
 	"cache-manager/model"
 	"context"
 	"encoding/base64"
-	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -43,15 +42,18 @@ func AddCache(c *gin.Context) {
 Delete cache based on item id search
 */
 func deleteCacheProccess(c *gin.Context) {
-	helper.SecurePath(c)
-	id := c.Param("id")
+	isCli := c.Param("isCli")
+	if isCli != "1" {
+		helper.SecurePath(c)
+	}
+	tag := c.Param("tag")
 	var (
 		url        string
 		cacheCount uint
 	)
-	iter := config.SESSION.Query("select url from cache where data like '%" + id + "%'").Iter()
+	iter := config.SESSION.Query("select url from cache where tag='" + tag + "'").Iter()
 	for iter.Scan(&url) {
-		decoded, err := base64.StdEncoding.DecodeString(url)
+		_, err := base64.StdEncoding.DecodeString(url)
 		if err != nil {
 			helper.Warning("cache delete failed, base64 decoding: "+err.Error(), nil)
 		}
@@ -60,7 +62,7 @@ func deleteCacheProccess(c *gin.Context) {
 		if err != nil {
 			helper.Warning("cache delete failed: "+err.Error(), nil)
 		}
-		fmt.Println("Cache: ", string(decoded))
+		// fmt.Println("Cache: ", string(decoded))
 		url = ""
 		cacheCount++
 	}
@@ -77,7 +79,7 @@ func addCacheProccess(data model.CacheModel) {
 		// panic(err.Error())
 	}
 	compressedIndexData := helper.CompressJsonIndexing(string(newData))
-	err = config.SESSION.Query("insert into cache (url,data,created_at,updated_at) values (?,?,toTimestamp(now()),toTimestamp(now()))", data.Url, compressedIndexData).Exec()
+	err = config.SESSION.Query("insert into cache (url,data,tag,created_at,updated_at) values (?,?,?,toTimestamp(now()),toTimestamp(now()))", data.Url, compressedIndexData, data.Tag).Exec()
 	if err != nil {
 		helper.Warning("cache saving failed: Url:"+data.Url+","+err.Error(), nil)
 		// panic(err.Error())
