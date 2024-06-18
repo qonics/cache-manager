@@ -14,7 +14,8 @@ var SESSION *gocql.Session
 
 func ConnectDb() {
 
-	cluster := gocql.NewCluster("127.0.0.1")
+	cluster := gocql.NewCluster("127.0.0.1:9042")
+	// Set up authentication
 	cluster.Keyspace = os.Getenv("database")
 	cluster.Consistency = gocql.One
 	cluster.ConnectTimeout = time.Second * 5
