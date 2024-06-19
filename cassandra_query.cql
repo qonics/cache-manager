@@ -25,3 +25,24 @@ WITH OPTIONS = { 'mode': 'CONTAINS' };
 CREATE CUSTOM INDEX cache_tag ON cache (tag) USING 'org.apache.cassandra.index.sasi.SASIIndex'
 WITH OPTIONS = { 'mode': 'CONTAINS' };
 `
+
+
+
+CREATE TABLE activity_logs (
+    id uuid PRIMARY KEY,
+    event_type text,
+    type text,
+    activity text,
+    ip_address text,
+    agent text,
+    extra text,
+    operator int,
+    created_at timestamp,
+    updated_at timestamp
+);
+
+
+CREATE INDEX ON activity_logs (event_type);
+CREATE INDEX ON activity_logs (type);
+CREATE INDEX ON activity_logs (operator);
+CREATE INDEX ON activity_logs (created_at);

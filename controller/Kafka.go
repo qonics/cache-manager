@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/gin-gonic/gin"
@@ -146,6 +147,22 @@ func (consumer *Consumer) saveToCassandra(message *sarama.ConsumerMessage) error
 		panic(err.Error())
 	}
 	log.Printf("message to save into Cassandra: %v", string(message.Value))
+
+	log := ActivityLogs{
+		EventType: "login",
+		Type:      "user",
+		Activity:  "User logged in",
+		IpAddress: "192.168.1.1",
+		Agent:     "Mozilla/5.0",
+		Extra:     "",
+		Operator:  1,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	if err := insertActivityLog(config.SESSION, log); err != nil {
+
+		panic("Failed to insert log:" + err.Error())
+	}
 	return nil
 }
 
@@ -164,4 +181,22 @@ func StopConsumerEndpoint(c *gin.Context) {
 	close(messages)
 	wg.Wait()
 	c.JSON(http.StatusOK, gin.H{"message": "Kafka consumer stopped"})
+}
+
+func insertActivityLog(session *gocql.Session, log ActivityLogs) error {
+	id := gocql.TimeUUID()
+	query := `INSERT INTO activity_logs (id, event_type, type, activity, ip_address, agent, extra, operator, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	return session.Query(query, id, log.EventType, log.Type, log.Activity, log.IpAddress, log.Agent, log.Extra, log.Operator, log.CreatedAt, log.UpdatedAt).Exec()
+}
+
+type ActivityLogs struct {
+	EventType string
+	Type      string
+	Activity  string
+	IpAddress string
+	Agent     string
+	Extra     string
+	Operator  int
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
