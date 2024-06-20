@@ -130,7 +130,7 @@ func (consumer *Consumer) ConsumeClaim(sess sarama.ConsumerGroupSession, claim s
 		log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
 
 		// Save the message to Cassandra
-		if err := consumer.saveToCassandra(message); err != nil {
+		if err := consumer.saveToCassandra(message); err == false {
 			log.Printf("Failed to save message to Cassandra: %v", err)
 		}
 
@@ -140,30 +140,45 @@ func (consumer *Consumer) ConsumeClaim(sess sarama.ConsumerGroupSession, claim s
 }
 
 // saveToCassandra saves a Kafka message to the Cassandra logs table
-func (consumer *Consumer) saveToCassandra(message *sarama.ConsumerMessage) error {
+func (consumer *Consumer) saveToCassandra(message *sarama.ConsumerMessage) bool {
 	// query := `INSERT INTO users_logs (topic,message,timestamp) VALUES (?, ?, toTimestamp(now()))`
 	err := config.SESSION.Query("insert into users_logs (topic,message,timestamp) values (?,?,toTimestamp(now()))", message.Topic, message.Value).Exec()
 	if err != nil {
 		panic(err.Error())
 	}
-	log.Printf("message to save into Cassandra: %v", string(message.Value))
-
+	type ActivityLog struct {
+		EventType string    `json:"event_type"`
+		Type      string    `json:"type"`
+		Activity  string    `json:"activity"`
+		IpAddress string    `json:"ip_address"`
+		Agent     string    `json:"agent"`
+		Extra     string    `json:"extra"`
+		Operator  int       `json:"operator"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+	}
+	var logEntry ActivityLog
+	err1 := json.Unmarshal(message.Value, &logEntry)
+	if err1 != nil {
+		log.Printf("Failed to unmarshal JSON: %v", err1.Error())
+		return false
+	}
 	log := ActivityLogs{
-		EventType: "login",
-		Type:      "user",
-		Activity:  "User logged in",
-		IpAddress: "192.168.1.1",
-		Agent:     "Mozilla/5.0",
-		Extra:     "",
-		Operator:  1,
+		EventType: logEntry.EventType,
+		Type:      logEntry.Type,
+		Activity:  logEntry.Activity,
+		IpAddress: logEntry.IpAddress,
+		Agent:     logEntry.Agent,
+		Extra:     logEntry.Extra,
+		Operator:  logEntry.Operator,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	if err := insertActivityLog(config.SESSION, log); err != nil {
-
-		panic("Failed to insert log:" + err.Error())
+	res := insertActivityLog(log)
+	if res == false {
+		return false
 	}
-	return nil
+	return true
 }
 
 // StartConsumerEndpoint starts the Kafka consumer in a separate goroutine
@@ -183,10 +198,14 @@ func StopConsumerEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Kafka consumer stopped"})
 }
 
-func insertActivityLog(session *gocql.Session, log ActivityLogs) error {
+func insertActivityLog(log ActivityLogs) bool {
 	id := gocql.TimeUUID()
 	query := `INSERT INTO activity_logs (id, event_type, type, activity, ip_address, agent, extra, operator, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	return session.Query(query, id, log.EventType, log.Type, log.Activity, log.IpAddress, log.Agent, log.Extra, log.Operator, log.CreatedAt, log.UpdatedAt).Exec()
+	err := config.SESSION.Query(query, id, log.EventType, log.Type, log.Activity, log.IpAddress, log.Agent, log.Extra, log.Operator, log.CreatedAt, log.UpdatedAt).Exec()
+	if err != nil {
+		panic(err.Error())
+	}
+	return true
 }
 
 type ActivityLogs struct {
